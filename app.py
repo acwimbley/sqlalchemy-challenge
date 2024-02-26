@@ -46,8 +46,9 @@ def welcome():
         f"Available Routes:<br/>"
         f"api/v1.0/precipitation<br/>"
         f"api/v1.0/stations<br/>"
-        f"api/v1.0/tobs"
-        #f"api/v1.0/tobs/<start_date>"
+        f"api/v1.0/tobs<br/>"
+        f"api/v1.0/<start><br/>"
+        f"/api/v1.0/<start>/<end>"
     )
 
 #PRECIPITATION ROUTE
@@ -84,8 +85,7 @@ def precipitation():
         #Closing the session
         session.close()
 
-if __name__ == "__main__":
-    app.run(debug=True)
+
 
 ##STATIONS ROUTE
 
@@ -109,8 +109,7 @@ def station():
         #Closing the session
         session.close()
 
-if __name__ == "__main__":
-    app.run(debug=True)
+
 
 
 
@@ -126,68 +125,81 @@ def tobs():
 
     try:
         # Find the most active station
-        most_active_station = (
+            most_active_station = (
             session.query(Measurement.station, func.count(Measurement.station))
             .group_by(Measurement.station)
             .order_by(func.count(Measurement.station).desc())
             .first()
     )
 
-        if most_active_station:
-            most_active_station_id = most_active_station[0]
+            if most_active_station:
+                most_active_station_id = most_active_station[0]
 
-            # Find the latest date in the dataset
-            latest_date = session.query(func.max(Measurement.date)).scalar()
+                # Find the latest date in the dataset
+                latest_date = session.query(func.max(Measurement.date)).scalar()
 
-            # Calculate the date one year ago from the latest date
-            one_year_ago = dt.datetime.strptime(latest_date, "%Y-%m-%d") - dt.timedelta(days=365)
+                # Calculate the date one year ago from the latest date
+                one_year_ago = dt.datetime.strptime(latest_date, "%Y-%m-%d") - dt.timedelta(days=365)
 
-            # Perform the query to retrieve temperature observations for the most active station and the last year
-            results = (
-                session.query(Measurement.date, Measurement.tobs)
-                .filter(Measurement.station == most_active_station_id)
-                .filter(Measurement.date >= one_year_ago)
-                .all()
+                # Perform the query to retrieve temperature observations for the most active station and the last year
+                results = (
+                    session.query(Measurement.date, Measurement.tobs)
+                    .filter(Measurement.station == most_active_station_id)
+                    .filter(Measurement.date >= one_year_ago)
+                    .all()
             )
 
-            # Create a list of dictionaries with temperature observations
-            all_tobs = [{"date": date, "tobs": tobs} for date, tobs in results]
+                # Create a list of dictionaries with temperature observations
+                all_tobs = [{"date": date, "tobs": tobs} for date, tobs in results]
 
+            else:         
+
+                 return jsonify({"error": "No data available for temperature observations"}), 404
             return jsonify(all_tobs)
-        else:
-         return jsonify({"error": "No data available for temperature observations"}), 404
+    
+    
+           
 
     finally:
         #Closing the session
         session.close() 
     
-if __name__ == "__main__":
-    app.run(debug=True)     
-    
-# #START DATE ROUTE
+     
+#START DATE ROUTE
 
-# @app.route("/api/v1.0/tobs/<start_date>")
+# @app.route("/api/v1.0/<start_date>")
 # def tobs_start_date(start_date):
 #     """Return a JSON representation of temperature observations from the specified start date."""
-    
-#     # Perform the query to retrieve temperature observations from the start date
-#     results = session.query(Measurement.date, Measurement.tobs).filter(Measurement.date >= start_date).all()
 
-#     # Create a list of dictionaries with temperature observations
-#     all_tobs = [{"date": date, "tobs": tobs} for date, tobs in results]
+#     #Creating a session
+#     session = Session(engine) 
 
-#     return jsonify(all_tobs)
-
-# if __name__ == "__main__":
-#     app.run(debug=True)    
+#     try:   
+#         # Perform the query to retrieve temperature observations from the start date
+#         results = session.query(Measurement.date, Measurement.tobs).filter(Measurement.date >= start_date).all()
 
 
+#         # Create a list of dictionaries with temperature observations
+#         all_tobs = [{"date": date, "tobs": tobs} for date, tobs in results]
 
 
-# @app.route("/api/v1.0/tobs")
-# def tobs():
+#         return jsonify(all_tobs)
+
+#     finally:
+#         #Closing the session
+#         session.close() 
+
+
+   
+
+
+# @app.route("/api/v1.0/<start>/<end>")
+# def tobs_start_end_date(start/end):
 #     """Return a JSON representation of temperature observations for the last year."""
-    
+
+#     #Creating a session
+#     session = Session(engine) 
+
 #     # Perform the query to retrieve temperature observations
 #     # Replace 'your_start_date' and 'your_end_date' with the appropriate date range
 #     results = session.query(Measurement.date, Measurement.tobs).filter(Measurement.date >= 'your_start_date', Measurement.date <= 'your_end_date').all()
@@ -202,32 +214,46 @@ if __name__ == "__main__":
 
 #     return jsonify(all_tobs)
 
+#     #Closing the session
+#     session.close() 
+
 # if __name__ == "__main__":
 #     app.run(debug=True)
 
 
-# @app.route("/api/v1.0/<start>")
-# @app.route("/api/v1.0/<start>/<end>")
-# def temperature_stats(start, end=None):
-#     """Return a JSON list of the minimum, average, and maximum temperature for a specific start or start-end range."""
+#Start date and  Start/End date Route with temperatures min, max and average - Combined from above commented out lines
+
+@app.route("/api/v1.0/<start>")
+@app.route("/api/v1.0/<start>/<end>")
+def temperature_stats(start, end=None):
+    """Return a JSON list of the minimum, average, and maximum temperature for a specific start or start-end range."""
+
+    #Creating a session
+    session = Session(engine) 
     
-#     # Perform the query to retrieve temperature observations
-#     if end:
-#         results = session.query(func.min(Measurement.tobs), func.avg(Measurement.tobs), func.max(Measurement.tobs)).\
-#             filter(Measurement.date >= start, Measurement.date <= end).all()
-#     else:
-#         results = session.query(func.min(Measurement.tobs), func.avg(Measurement.tobs), func.max(Measurement.tobs)).\
-#             filter(Measurement.date >= start).all()
+    try:
+        # Perform the query to retrieve temperature observations
+        if end:
+            results = session.query(func.min(Measurement.tobs), func.avg(Measurement.tobs), func.max(Measurement.tobs)).\
+            filter(Measurement.date >= start, Measurement.date <= end).all()
+        else:
+            results = session.query(func.min(Measurement.tobs), func.avg(Measurement.tobs), func.max(Measurement.tobs)).\
+            filter(Measurement.date >= start).all()
 
-#     # Create a dictionary with temperature statistics
-#     temperature_stats_dict = {
-#         "start_date": start,
-#         "end_date": end,
-#         "tmin": results[0][0],
-#         "tavg": results[0][1],
-#         "tmax": results[0][2]
-#     }
+        # Create a dictionary with temperature statistics
+        temperature_stats_dict = {
+        "start_date": start,
+        "end_date": end,
+        "tmin": results[0][0],
+        "tavg": results[0][1],
+        "tmax": results[0][2]
+    }
 
-#     return jsonify(temperature_stats_dict)
+        return jsonify(temperature_stats_dict)
 
-#
+    finally:
+            #Closing the session
+            session.close() 
+
+if __name__ == "__main__":
+     app.run(debug=True)  
